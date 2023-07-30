@@ -1,0 +1,76 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split, cross_val_predict
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, precision_recall_curve
+from imblearn.over_sampling import SMOTE
+
+# Step 1: Load the dataset
+data = pd.read_csv("CreditCard.csv")  # Replace with your dataset path
+
+# Step 2: Preprocess the data
+# You might need to handle missing values, encode categorical variables, etc.
+
+# Step 3: Perform EDA (Optional)
+
+# Step 4: Feature Engineering (Optional)
+
+# Step 5: Split the data into training and testing sets
+X = data.drop("Class", axis=1)
+y = data["Class"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 6: Handle class imbalance using SMOTE
+smote = SMOTE(random_state=42)
+X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+
+# Step 7: Feature scaling
+scaler = StandardScaler()
+X_train_resampled = scaler.fit_transform(X_train_resampled)
+X_test = scaler.transform(X_test)
+
+# Step 8: Train the Logistic Regression model with cross-validation
+model = LogisticRegression(max_iter=1000, random_state=42)  # Increased max_iter value
+
+# Using cross_val_predict to get predictions for each data point in the training set
+y_train_pred = cross_val_predict(model, X_train_resampled, y_train_resampled, cv=5, method='predict_proba')
+
+# Getting the fraud score for each transaction
+fraud_scores = y_train_pred[:, 1]
+
+# Step 9: Make predictions on the test set
+model.fit(X_train_resampled, y_train_resampled)
+y_pred = model.predict(X_test)
+
+# Step 10: Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+roc_auc = roc_auc_score(y_test, y_pred)
+
+# Confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+# Precision-recall curve
+precisions, recalls, _ = precision_recall_curve(y_test, model.predict_proba(X_test)[:, 1])
+
+print("Fraud Scores (for training data):")
+print(fraud_scores)
+
+print("\nModel Evaluation:")
+print("Accuracy:", accuracy)
+print("Precision:", precision)
+print("Recall:", recall)
+print("F1 Score:", f1)
+print("ROC AUC Score:", roc_auc)
+print("\nConfusion Matrix:")
+print(conf_matrix)
+
+# Plot Precision-Recall curve
+import matplotlib.pyplot as plt
+plt.plot(recalls, precisions)
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Precision-Recall Curve')
+plt.show()
